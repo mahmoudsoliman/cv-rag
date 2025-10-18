@@ -1,5 +1,5 @@
 from typing import Optional
-from query_router import route_query_llm
+from query_processing.query_router import route_query_llm
 from model.QueryRoute import QueryRoute
 from db.chroma_store import store
 from db.sql_store import init_db, resolve_candidate, load_candidate_profiles, ids_by_company, ids_by_institution, ids_by_skills, id_by_name, companies_for, institutions_for
@@ -133,17 +133,6 @@ def execute_query(con, vs, q: str):
                 ids.add(cid)
 
         profiles = load_candidate_profiles(con, list(ids)) if ids else []
-        docs = vsearch(vs, q, k=8, cand_ids=ids, sections=sections)
+        docs = vsearch(vs, q, k=8, cand_ids=list(ids), sections=sections)
         result = {"ok": True, "sections": sections, "facts": profiles, "docs": docs}
         return result
-
-# ---- Usage ----
-con = init_db("data/candidates.db")
-vs = store
-q = "Who has experience as a software engineer in test?"
-result = execute_query(con, vs, q)
-print(result)
-from answer_generator import synthesize_answer_from_docs
-
-answer = synthesize_answer_from_docs(result, q)
-print("Answer:\n", answer)
