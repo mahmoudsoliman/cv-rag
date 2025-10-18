@@ -1,0 +1,105 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ full_name }} – CV</title>
+<style>
+  @page { size: A4; margin: 24mm 20mm; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial; color:#111; }
+  .header { display:flex; gap:16px; align-items:center; margin-bottom: 12px; }
+  .portrait { width: 110px; height:110px; object-fit: cover; border-radius: 8px; }
+  .name { font-size: 22pt; font-weight: 700; line-height:1.1; }
+  .title { font-size: 11pt; color:#444; }
+  .meta { margin-top:6px; font-size:10pt; color:#333; }
+  .pill { display:inline-block; padding:3px 8px; border:1px solid #ddd; border-radius:999px; margin:3px 6px 3px 0; font-size:9pt;}
+  h2 { font-size:12.5pt; border-bottom:1px solid #eee; padding-bottom:4px; margin-top:16px; }
+  .summary { margin-top: 8px; font-size: 10.5pt; }
+  .section { margin-top: 8px; }
+  .exp-item { margin: 8px 0 10px; }
+  .exp-header { display:flex; justify-content:space-between; font-weight:600; }
+  .exp-role { font-size: 11pt; }
+  .exp-company { color:#444; }
+  .exp-dates { color:#444; font-size:9.5pt; }
+  ul { margin: 4px 0 0 18px; }
+  li { margin: 2px 0; }
+  .columns { display:flex; gap:20px; }
+  .col { flex:1; }
+  .footnote { margin-top:10px; font-size:8.5pt; color:#666; }
+</style>
+</head>
+<body>
+  <div class="header">
+    {% if portrait_path %}
+      <img src="{{ portrait_path }}" class="portrait" alt="portrait">
+    {% endif %}
+    <div>
+      <div class="name">{{ full_name }}</div>
+      <div class="title">{{ title }}</div>
+      <div class="meta">{{ location }} · {{ email }} · {{ phone }}</div>
+    </div>
+  </div>
+
+  <div class="summary">{{ summary }}</div>
+
+  <div class="columns">
+    <div class="col">
+      <h2>Experience</h2>
+      {% for job in experience %}
+        <div class="exp-item">
+          <div class="exp-header">
+            <div class="exp-role">{{ job.title }} · <span class="exp-company">{{ job.company }}</span></div>
+            <div class="exp-dates">{{ job.start_date }} – {{ job.end_date or "Present" }}</div>
+          </div>
+          <div class="exp-summary">{{ job.summary }}</div>
+          {% if job.highlights %}
+            <ul>
+              {% for h in job.highlights %}
+                <li>{{ h }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="col">
+      <h2>Skills</h2>
+      <div>
+        {% for s in skills %}
+          <span class="pill">{{ s }}</span>
+        {% endfor %}
+      </div>
+
+      <h2>Education</h2>
+      {% for e in education %}
+        <div class="section">
+          <div><strong>{{ e.degree }}</strong></div>
+          <div>{{ e.institution }} ({{ e.start_year }}–{{ e.end_year }})</div>
+        </div>
+      {% endfor %}
+
+      {% if languages %}
+        <h2>Languages</h2>
+        <div>
+          {% for l in languages %}
+            <div>{{ l.language }} — {{ l.level }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      {% if certifications %}
+        <h2>Certifications</h2>
+        <ul>
+          {% for c in certifications %}
+            <li>{{ c }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if synthetic %}
+    <div class="footnote">This CV is <strong>synthetic</strong> and generated for testing/training.</div>
+  {% endif %}
+</body>
+</html>
