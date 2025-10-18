@@ -76,10 +76,8 @@ def generate_person_basic():
 
 async def request_structured_cv(session, basic_fields, role_hint="software engineer", temperature=0.7):
     schema = make_cv_schema()
-# TODO: check prompt caching
     user_prompt = f"""
-You are a synthetic CV generator for testing data. Produce a single JSON object that matches this schema:
-{json.dumps(schema, indent=2)}
+You are a synthetic CV generator for testing data. Produce a single JSON object that matches the schema below
 
 Constraints:
 - Be internally consistent (dates, durations, ages).
@@ -87,13 +85,15 @@ Constraints:
 - Do NOT reference real people or real private data.
 - The "synthetic" field must be true.
 - The "image_prompt" must be a short photorealistic prompt describing a headshot that matches the candidate (age, gender, attire professional), with no real person names.
+- Return ONLY the JSON object, no extra text.
 
 Base candidate data (from Faker):
 {json.dumps(basic_fields)}
 
-Role hint: {role_hint}
+schema:
+{json.dumps(schema, indent=2)}
 
-Return ONLY the JSON object, no extra text.
+Role hint: {role_hint}
 """
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -104,19 +104,14 @@ Return ONLY the JSON object, no extra text.
     payload = {
         "model": "gpt-4o-mini",
         "input": user_prompt,
-        "temperature": temperature,
-        # Optionally you can ask for a JSON schema object via structured outputs if your client supports it.
+        "temperature": temperature
     }
 
-    print("generatinf cv data from open ai ...")
+    print("generating cv data from open ai ...")
 
     async with session.post(f"{API_BASE}/responses", headers=headers, json=payload) as resp:
         resp.raise_for_status()
         result = await resp.json()
-
-    # resp = requests.post(f"{API_BASE}/responses", headers=headers, json=payload)
-    # resp.raise_for_status()
-    # result = resp.json()
 
     text = ""
     for part in result.get("output", []):
@@ -134,7 +129,6 @@ Return ONLY the JSON object, no extra text.
     try:
         cv_json = json.loads(text.strip())
     except Exception as e:
-        # Last resort: try to find JSON substring
         import re
         m = re.search(r"(\{.*\})", text, flags=re.DOTALL)
         if m:
@@ -184,16 +178,15 @@ async def generate_portrait_image(session, image_prompt, fname="portrait.png", s
 
 
 async def generate_single_cv(session, role_hint=None, generate_image=True):
-    """Generate a single CV with the given role hint."""
     if role_hint is None:
         role_hint = "Senior Backend Engineer"
     
     print(f"Generating CV for role: {role_hint} (image: {generate_image})")
     
     # Ensure directories exist
-    os.makedirs("data/json", exist_ok=True)
-    os.makedirs("data/images", exist_ok=True)
-    os.makedirs("data/pdf", exist_ok=True)
+    os.makedirs("./data/json", exist_ok=True)
+    os.makedirs("./data/images", exist_ok=True)
+    os.makedirs("./data/pdf", exist_ok=True)
     
     cv_id = str(uuid.uuid4())
     basic_info = generate_person_basic()
@@ -201,7 +194,7 @@ async def generate_single_cv(session, role_hint=None, generate_image=True):
     cv["id"] = cv_id
     
     # Save JSON data
-    json_path = f"data/json/{cv_id}.json"
+    json_path = f"./data/json/{cv_id}.json"
     print("Storing CV json data...")
     async with aiofiles.open(json_path, "w", encoding="utf-8") as fh:
         await fh.write(json.dumps(cv, indent=2, ensure_ascii=False))
@@ -209,7 +202,7 @@ async def generate_single_cv(session, role_hint=None, generate_image=True):
     # Conditionally generate and save portrait image
     image_path = None
     if generate_image:
-        image_path = f"data/images/{cv_id}.png"
+        image_path = f"./data/images/{cv_id}.png"
         await generate_portrait_image(session, cv["image_prompt"], fname=image_path)
     
     # Generate PDF

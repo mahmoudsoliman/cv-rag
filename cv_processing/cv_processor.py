@@ -4,9 +4,9 @@ import asyncio
 from typing import List
 from pdf_parser import extract_pdf_text
 from cv_extractor import extract_structured_profile_from_text
-from sql_store import store_profile
+from db.sql_store import store_profile
 from cv_chunker import build_docs_from_profile
-from chroma_store import store
+from db.chroma_store import store
 
 
 async def process_single_resume(pdf_path: str, db_path: str) -> str:
@@ -37,7 +37,7 @@ async def process_single_resume(pdf_path: str, db_path: str) -> str:
         raise
 
 
-async def process_all_resumes(pdf_folder: str = "data/pdf", db_path: str = "data/candidates.db", max_concurrent: int = 5) -> List[str]:
+async def process_all_resumes(pdf_folder: str = "./data/pdf", db_path: str = "./data/candidates.db", max_concurrent: int = 5) -> List[str]:
     processed_candidates = []
     
     # Get all PDF files in the folder

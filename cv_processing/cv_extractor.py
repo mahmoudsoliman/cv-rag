@@ -3,7 +3,7 @@ from typing import List, Optional, Literal
 from dotenv import load_dotenv
 from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict
-from CandidateProfile import (EducationItem, ExperienceItem, LinkItem, CertificationItem, CandidateProfile)
+from model.CandidateProfile import (EducationItem, ExperienceItem, LinkItem, CertificationItem, CandidateProfile)
 
 
 

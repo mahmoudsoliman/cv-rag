@@ -1,7 +1,7 @@
 import os
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from QueryRoute import QueryRoute
+from model.QueryRoute import QueryRoute
 from dotenv import load_dotenv
 
 load_dotenv()

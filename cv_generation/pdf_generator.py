@@ -3,7 +3,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from weasyprint import HTML
 from pathlib import Path
 
-BASE_DIR = os.path.dirname(__file__)
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
 TEMPLATES = os.path.join(BASE_DIR, "templates")
 
 def to_file_uri(p: str | None) -> str | None:

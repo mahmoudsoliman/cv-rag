@@ -1,7 +1,7 @@
 import sqlite3, uuid
 from rapidfuzz import process, fuzz
 from typing import Optional, Tuple, Iterable, List, Dict
-from CandidateProfile import CandidateProfile, EducationItem, ExperienceItem, LinkItem, CertificationItem
+from model.CandidateProfile import CandidateProfile, EducationItem, ExperienceItem, LinkItem, CertificationItem
 
 def init_db(db_path="resumes.db"):
     con = sqlite3.connect(db_path)
