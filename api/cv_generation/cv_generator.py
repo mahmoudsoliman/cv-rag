@@ -77,23 +77,64 @@ def generate_person_basic():
 async def request_structured_cv(session, basic_fields, role_hint="software engineer", temperature=0.7):
     schema = make_cv_schema()
     user_prompt = f"""
-You are a synthetic CV generator for testing data. Produce a single JSON object that matches the schema below
+        You are a synthetic CV generator for testing data. Produce a single JSON object that matches the schema below.
 
-Constraints:
-- Be internally consistent (dates, durations, ages).
-- Use realistic but fictional company names and accomplishments.
-- Do NOT reference real people or real private data.
-- The "synthetic" field must be true.
-- The "image_prompt" must be a short photorealistic prompt describing a headshot that matches the candidate (age, gender, attire professional), with no real person names.
-- Return ONLY the JSON object, no extra text.
+        STRICT OUTPUT
+        - Return ONLY the JSON object. No prose, no Markdown, no comments.
+        - The JSON MUST validate against the provided schema exactly (correct keys, types, and nesting).
 
-Base candidate data (from Faker):
-{json.dumps(basic_fields)}
+        GLOBAL CONSTRAINTS
+        - Be internally consistent (dates, durations, ages, seniority).
+        - Use real company names and real universities that plausibly match the candidate’s location/region in the base data.
+        - Companies and universities MUST be diverse: do not repeat the same company or university more than once in the entire CV, unless representing multiple roles at the SAME employer (then titles/dates must be distinct and contiguous, with no overlaps or gaps larger than 3 months).
+        - Skills MUST be relevant to the role hint and the actual experience described. Do not list skills the experience does not justify.
+        - Use a professional tone suitable for CVs.
+        - Do NOT reference real people or private data.
+        - The "synthetic" field must be true.
+        - The "image_prompt" must be a short photorealistic headshot description (age, gender expression if implied by base data, neutral background, professional attire). No real person names, no copyrighted styles.
 
-schema:
-{json.dumps(schema, indent=2)}
+        ANTI-REPETITION & DIVERSITY RULES
+        - Companies: choose well-known or regionally plausible real companies across different sizes (startup, mid-size, enterprise); do not reuse the same company name unless modeling a promotion at the same employer.
+        - Universities: choose real, regionally plausible institutions; do not reuse the same university.
+        - Projects/Accomplishments: write distinct, non-template bullets. Vary verbs and outcomes. Include concrete metrics (e.g., latency ↓35%, revenue ↑$1.2M, NPS +12, cycle time ↓25%) where credible.
+        - Skills: deduplicate and normalize (e.g., "Python" not ["py","python","Python3"]). Keep 10–16 unique skills max. Group them implicitly in bullets (core languages/frameworks, tools, cloud, data/DB, testing/CI/CD).
 
-Role hint: {role_hint}
+        ROLE ALIGNMENT (based on Role hint)
+        - Include skills and achievements that are typical for the role level and function.
+        - If role is backend: emphasize languages (e.g., Python/Go/Java), frameworks (Django/FastAPI/Spring), databases (PostgreSQL/MySQL), cloud (AWS/Azure/GCP), CI/CD, observability, scalability, security.
+        - If frontend: emphasize JS/TS, React/Vue, state mgmt, accessibility, performance (LCP/CLS), testing (Jest/RTL), design systems.
+        - If data/ML: emphasize Python, pandas, SQL, Spark, ML frameworks, feature stores, MLOps.
+        - If mobile: platform language + tooling, store releases, performance, accessibility.
+        (Adapt similarly for DevOps/SRE, Product, Design, etc.)
+
+        DATE & SENIORITY CONSISTENCY
+        - Total experience years must match the roles’ dates.
+        - No overlapping full-time roles unless clearly marked as part-time/consulting.
+        - Internships and part-time must be labeled.
+
+        STRUCTURE RULES
+        - Experience: 3–6 roles; each role 3–6 bullets; results-oriented and metric-driven where possible.
+        - Education: 1–2 entries that match location/discipline; plausible years for the candidate’s age.
+        - Certifications (optional): use real cert names relevant to role; no duplicates.
+        - Links: 1–3 links (e.g., GitHub, portfolio, LinkedIn) if plausible.
+        - Summary: 2–4 sentences tailored to the role; avoid generic boilerplate.
+
+        VALIDATION & SELF-CHECK (silent)
+        - Before returning JSON, silently verify:
+        * No duplicated company names across different employers.
+        * No duplicated university names.
+        * Skills list is deduplicated, normalized (title case for products, uppercase for acronyms).
+        * Skills present are evidenced by at least one experience bullet or project.
+        * Dates are chronological and plausible with no large unexplained gaps.
+        - If any check fails, regenerate the problematic parts and re-validate, then output the final JSON.
+
+        Base candidate data (from Faker):
+        {json.dumps(basic_fields)}
+
+        schema:
+        {json.dumps(schema, indent=2)}
+
+        Role hint: {role_hint}
 """
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -223,7 +264,11 @@ async def generate_multiple_cvs(n):
         "Data Engineer",
         "Data Scientist",
         "Engineering Manager",
-        "Tech Lead"
+        "Tech Lead",
+        "VP of Engineering",
+        "Software Engineer in Test",
+        "DevOps Engineer",
+        "Data Analyst"
     ]
     
     print(f"Generating {n} CVs with randomized titles...")
@@ -234,7 +279,7 @@ async def generate_multiple_cvs(n):
             generate_single_cv(
                 session, 
                 random.choice(job_titles),
-                generate_image=random.random() < 0.10  # 10% chance for images
+                generate_image=random.random() < 0.2  # 20% chance for images
             ) 
             for _ in range(n)
         ]
@@ -252,7 +297,7 @@ if __name__ == "__main__":
     # generate_single_cv("Senior Backend Engineer")
     
     # For multiple CVs with random titles:
-    asyncio.run(generate_multiple_cvs(10))  # This will generate 10 CVs with random titles
+    asyncio.run(generate_multiple_cvs(10))  # This will generate 20 CVs with random titles
     
     # Default: generate one CV
     #generate_single_cv("Senior Backend Engineer")

@@ -10,44 +10,53 @@ router_llm = ChatOpenAI(model="gpt-4o-mini", api_key=os.environ["OPENAI_API_KEY"
 structured_router = router_llm.with_structured_output(QueryRoute)
 
 ROUTER_SYSTEM = (
-   """
+ """
     You route recruiter queries for a resume search system and must return a STRICT JSON object
     per the provided schema. Do NOT add fields. Think step-by-step but ONLY return the JSON object.
 
-    ROUTING GOAL
-    - Choose: SQL (exact filters), VECTOR (semantic/fuzzy), or HYBRID (SQL shortlist → vector rank).
-    - Extract slots:
-    - skills: LIST of skill names ONLY when the query is about skills (normalize casing; dedupe).
-    - company: ONLY for work experience queries.
-    - institution: ONLY for education queries.
-    - candidate_name: when the query names a person.
-    - Choose the minimal, correct target_sections: include ONLY what’s needed.
+    ALLOWED MODES (SQL-only is disabled)
+    - VECTOR  : semantic/fuzzy retrieval only
+    - HYBRID  : run SQL and VECTOR retrieval in parallel (both produce results). The LLM will rank/choose the best.
+                Do NOT assume vector is just a reranker of the SQL shortlist.
 
-    STRICT MAPPING (apply exactly)
-    - If the query targets education (university/college/institution/degree):
-        mode: "sql" (or "hybrid" if semantic phrasing),
-        target_sections: ["education"] ONLY.
-    - If the query targets company / job / title / dates of employment:
-        mode: "sql" (or "hybrid"),
-        target_sections: ["experience"] ONLY.
-    - If the query targets skills (e.g., "who has X", "experienced in Y"):
-        - If exact skill lookup is possible → mode: "hybrid" (SQL shortlist by skills → vector rank).
-        - Put all extracted skills into the 'skills' LIST.
-        - target_sections:
-            * ["skills"] by default (pure capability).
-            * ["skills","experience"] ONLY if the query explicitly asks for applied context (e.g., "projects with React", "experience using Python", "hands-on with Docker in production").
-    - If the query asks to summarize:
-        mode: "vector", need_summarization: true,
-        target_sections: ["summary","experience","education","skills"].
-    - If candidate_name is provided and the query asks to summarize that person:
-        restrict to that candidate; same sections as above.
+    DEFAULT POLICY
+    - Default to HYBRID whenever the query contains any precise, filterable attribute:
+    * skills list (e.g., "react", "python", "aws")
+    * company name (e.g., "amazon", "google")
+    * institution/degree (e.g., "mit", "bsc")
+    * candidate_name (person is named)
+    * clearly specified titles or dates (e.g., "engineering manager", "2019–2022")
+    - Use VECTOR only when no clear attribute is captured and the intent is domain/fuzzy,
+    or when the user asks for a summary.
+
+    SLOT EXTRACTION
+    - skills: LIST of skill names ONLY when the query is about skills (normalize casing; dedupe).
+    - company: ONLY for work/experience queries that mention a specific employer.
+    - institution: ONLY for education queries that mention a school/degree.
+    - candidate_name: when the query names a person.
+
+    TARGET SECTIONS (be minimal and correct)
+    - Education-only questions → ["education"]
+    - Company/work/title/date questions → ["experience"]
+    - Skills questions:
+    - ["skills"] by default (capability check)
+    - ["skills","experience"] ONLY if the query explicitly asks for applied context (e.g., "projects with React",
+        "experience using Python", "hands-on with Docker in production").
+    - Summaries → ["summary","experience","education","skills"]
+
+    SPECIAL CASES → VECTOR
+    - Domain/fuzzy intent with no precise attributes (e.g., "startups", "ecommerce", "fintech", "healthcare", "AI safety"):
+    mode: "vector", target_sections: ["experience"] unless the query clearly spans other sections.
+    - Summarization requests (with or without a candidate_name):
+    mode: "vector", need_summarization: true, target_sections: ["summary","experience","education","skills"].
 
     NEGATIVE RULES
+    - Never output mode "sql".
     - Do NOT put "education" for company/job queries.
     - Do NOT put "experience" for pure education queries.
     - Do NOT add multiple sections unless the query truly spans them.
-    - Do NOT fill 'skills' unless the query is about skills. When set, it must be a LIST (possibly empty, never a string).
-    - Do NOT invent slot values; leave them empty/None if absent.
+    - Do NOT fill 'skills' unless the query is about skills; when set, it must be a LIST (never a string).
+    - Do NOT invent slot values; leave missing slots empty/None.
 
     CONFIDENCE & ABSTAIN
     - If unsure, set abstain=true and confidence<0.5.

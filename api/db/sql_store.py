@@ -3,7 +3,7 @@ from rapidfuzz import process, fuzz
 from typing import Optional, Tuple, Iterable, List, Dict
 from model.CandidateProfile import CandidateProfile, EducationItem, ExperienceItem, LinkItem, CertificationItem
 
-def init_db(db_path="resumes.db"):
+def init_db(db_path="./data/candidates.db"):
     con = sqlite3.connect(db_path)
     con.execute("PRAGMA foreign_keys=ON;")
     return con

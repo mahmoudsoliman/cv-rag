@@ -4,7 +4,7 @@ import { CandidateProfile, Snippet } from '../types';
 
 interface EvidencePanelProps {
   facts: CandidateProfile[];
-  snippets: Snippet[];
+  snippets: CandidateProfile[];
 }
 
 export function EvidencePanel({ facts, snippets }: EvidencePanelProps) {
@@ -66,12 +66,7 @@ export function EvidencePanel({ facts, snippets }: EvidencePanelProps) {
         {snippetsOpen && (
           <div className="px-6 pb-6 space-y-4">
             {snippets.map((snippet, idx) => (
-              <SnippetCard
-                key={idx}
-                snippet={snippet}
-                expanded={expandedSnippets.has(idx)}
-                onToggle={() => toggleSnippet(idx)}
-              />
+               <CandidateCard key={idx} candidate={snippet} />
             ))}
           </div>
         )}

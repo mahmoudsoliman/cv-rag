@@ -5,6 +5,9 @@ from typing import Optional, List
 import uvicorn
 import os
 import sys
+import json
+import logging
+from datetime import datetime
 
 # Add the current directory to Python path to import modules
 #sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -34,35 +37,87 @@ app.add_middleware(
 # Pydantic models for request/response
 class AskRequest(BaseModel):
     question: str
-    
-class SnippetMetadata(BaseModel):
-    section: Optional[str] = None
-    candidate_id: Optional[str] = None
-    candidate_name: Optional[str] = None
-    company: Optional[str] = None
-    institution: Optional[str] = None
-    source_file: Optional[str] = None
-
-class SnippetScore(BaseModel):
-    distance: Optional[float] = None
-    similarity: Optional[float] = None
-
-class Snippet(BaseModel):
-    text: str
-    metadata: SnippetMetadata
-    score: Optional[SnippetScore] = None
 
 class AskResponse(BaseModel):
-    ok: bool
     sections: List[str]
     facts: List[CandidateProfile]
-    docs: List[Snippet]
+    docs: List[CandidateProfile]
     answer: Optional[str] = None
     why: Optional[str] = None
 
 # Initialize database and vector store
 con = init_db("data/candidates.db")
 vs = store
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def log_query_result(query: str, response: AskResponse, log_file: str = "data/query_logs2.jsonl"):
+    """
+    Log the query and its result to a JSON Lines file
+    """
+    try:
+        # Ensure the data directory exists
+        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        
+        # Convert sample facts to JSON-serializable format
+        sample_facts = []
+        for fact in response.facts[:3]:
+            if hasattr(fact, 'model_dump'):
+                # Pydantic model
+                sample_facts.append(fact.model_dump())
+            elif isinstance(fact, dict):
+                # Already a dictionary
+                sample_facts.append(fact)
+            elif hasattr(fact, '__dict__'):
+                # Convert object to dictionary
+                fact_dict = {
+                    "full_name": getattr(fact, 'full_name', None),
+                    "email": getattr(fact, 'email', None),
+                    "phone": getattr(fact, 'phone', None),
+                    "location": getattr(fact, 'location', None),
+                    "summary": getattr(fact, 'summary', None),
+                    "skills": getattr(fact, 'skills', [])
+                }
+                sample_facts.append(fact_dict)
+            else:
+                # Fallback: convert to string
+                sample_facts.append(str(fact))
+        
+        # Create log entry
+        log_entry = {
+            "timestamp": datetime.now().isoformat(),
+            "query": query,
+            "response": {
+                "ok": response.ok,
+                "sections": response.sections,
+                "facts_count": len(response.facts),
+                "docs_count": len(response.docs),
+                "answer": response.answer,
+                "why": response.why,
+                # Store first few facts and docs for analysis
+                "sample_facts": sample_facts,
+                "sample_docs": [
+                    doc if isinstance(doc, dict) else (
+                        doc.model_dump() if hasattr(doc, 'model_dump') else str(doc)
+                    )
+                    for doc in response.docs[:3]
+                ]
+            }
+        }
+        
+        # Append to log file (JSON Lines format)
+        with open(log_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        
+        logger.info(f"Logged query result to {log_file}")
+        
+    except Exception as e:
+        logger.error(f"Failed to log query result: {str(e)}")
 
 @app.get("/")
 async def root():
@@ -80,35 +135,48 @@ async def ask_question(request: AskRequest):
     try:
         # Execute the query using the existing query executor
         result = execute_query(con, vs, request.question)
-        
+
         # Generate answer using the answer generator
         answer = synthesize_answer_from_docs(result, request.question)
-        
+
         # Add the answer to the result
         result["answer"] = answer
         
         # Convert the result to the expected format
-        # Transform docs from tuples to Snippet objects
+        # Transform docs from tuples to profile objects (like facts)
         docs = []
         for doc_tuple in result.get("docs", []):
             if isinstance(doc_tuple, tuple) and len(doc_tuple) == 2:
                 doc, score = doc_tuple
-                snippet = Snippet(
-                    text=doc.page_content,
-                    metadata=SnippetMetadata(
-                        section=doc.metadata.get("section"),
-                        candidate_id=doc.metadata.get("candidate_id"),
-                        candidate_name=doc.metadata.get("candidate_name"),
-                        company=doc.metadata.get("company"),
-                        institution=doc.metadata.get("institution"),
-                        source_file=doc.metadata.get("source_file")
-                    ),
-                    score=SnippetScore(
-                        distance=score,
-                        similarity=1 - score if score is not None else None
-                    )
-                )
-                docs.append(snippet)
+                # Extract candidate information directly from metadata
+                metadata = doc.metadata
+                
+                # Create profile dict from metadata
+                profile_dict = {
+                    "full_name": metadata.get("candidate_name"),
+                    "email": metadata.get("email"),
+                    "phone": metadata.get("phone"),
+                    "location": metadata.get("location"),
+                    "links": [],  # Not available in current metadata structure
+                    "summary": metadata.get("summary"),
+                    "skills": metadata.get("skills", "").split(", ") if metadata.get("skills") else [],
+                    "education": [{
+                        "institution": metadata.get("education_institution"),
+                        "degree": metadata.get("education_degree"),
+                        "field": metadata.get("education_field"),
+                        "start_year": metadata.get("education_start_year"),
+                        "end_year": metadata.get("education_end_year")
+                    }] if metadata.get("education_institution") else [],
+                    "experience": [{
+                        "company": metadata.get("latest_company"),
+                        "title": metadata.get("latest_title"),
+                        "start": metadata.get("latest_start"),
+                        "end": metadata.get("latest_end"),
+                        "description": None  # Not available in current metadata structure
+                    }] if metadata.get("latest_company") else [],
+                    "certifications": []  # Not available in current metadata structure
+                }
+                docs.append(profile_dict)
         
         # Convert CandidateProfile objects to dictionaries
         facts = []
@@ -134,9 +202,11 @@ async def ask_question(request: AskRequest):
                 facts.append(fact_dict)
             else:
                 facts.append(fact)
+
+        print("Result:", result)
         
         response = AskResponse(
-            ok=result.get("ok", False),
+            ok=True,
             sections=result.get("sections", []),
             facts=facts,
             docs=docs,
@@ -144,9 +214,13 @@ async def ask_question(request: AskRequest):
             why=result.get("why")
         )
         
+        # Log the query and response
+        log_query_result(request.question, response)
+        
         return response
         
     except Exception as e:
+        print(f"Error processing query: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing query: {str(e)}")
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ def render_pdf(cv_data, portrait_path, pdf_path):
         loader=FileSystemLoader(TEMPLATES),
         autoescape=select_autoescape(["html", "xml"])
     )
-    tmpl = env.get_template("cv-template-1.html")
+    tmpl = env.get_template("cv-template-2.html")
 
     id = cv_data.get("id", "unknown")
 

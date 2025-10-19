@@ -6,12 +6,10 @@ from db.sql_store import init_db, resolve_candidate, load_candidate_profiles, id
 
 # ---- Helpers ----
 
-def vsearch(vs, query: str, k=8, cand_ids: Optional[list[str]] = None, sections: Optional[list[str]] = None):
+def vsearch(vs, query: str, k=8, cand_ids: Optional[list[str]] = None):
     clauses = []
     if cand_ids:
         clauses.append({"candidate_id": {"$in": cand_ids}})
-    if sections:
-        clauses.append({"section": {"$in": sections}})
 
     filter = None
     if len(clauses) == 1:
@@ -22,11 +20,11 @@ def vsearch(vs, query: str, k=8, cand_ids: Optional[list[str]] = None, sections:
 
 def experience_text_blocks(vs, candidate_id: str, k: int = 8):
     return vsearch(vs, "summarize the candidate's work experience", k=k,
-                   cand_ids=[candidate_id], sections=["experience"])
+                   cand_ids=[candidate_id])
 
 def profile_summary_blocks(vs, candidate_id: str, k: int = 8):
     return vsearch(vs, "overall resume summary", k=k,
-                   cand_ids=[candidate_id], sections=["summary","experience","education","skills"])
+                   cand_ids=[candidate_id])
 
 # ---- Executor ----
 
@@ -37,7 +35,7 @@ def execute_candidate_query(con, vs, route: QueryRoute, user_query: str):
         cid_name = resolve_candidate(con, route.candidate_name)
 
     if not cid_name:
-        return {"ok": False, "why": "candidate_not_found", "message": "Could not resolve candidate name. Check spelling."}
+        return {"facts": [], "docs": [], "why": "candidate_not_found", "message": "Could not resolve candidate name. Check spelling."}
 
     candidate_id, canonical_name = cid_name
     
@@ -47,15 +45,12 @@ def execute_candidate_query(con, vs, route: QueryRoute, user_query: str):
     profiles = load_candidate_profiles(con, [candidate_id])
 
     result = {
-        "ok": True,
         "sections": [],
         "facts": [],
         "docs": []
     }
 
-    ql = user_query.lower()
-
-    if route.need_summarization or "summarize" in ql or "summary" in ql or "overview" in ql:
+    if route.need_summarization:
         docs = profile_summary_blocks(vs, candidate_id, k=8)
         result["facts"].extend(profiles)
         result["docs"].extend(docs)
@@ -73,7 +68,7 @@ def execute_candidate_query(con, vs, route: QueryRoute, user_query: str):
         result["institutions"] = insts
         result["sections"].append("education")
         result["facts"].extend(profiles)
-    
+
     if "skills" in sections:
         result["sections"].append("skills")
         result["facts"].extend(profiles)
@@ -92,30 +87,10 @@ def execute_query(con, vs, q: str):
 
     if route.candidate_name:
         return execute_candidate_query(con, vs, route, q)
-    
-    if route.mode == "sql":
-        ids = set()
-        if route.institution:
-            ids |= set(ids_by_institution(con, route.institution))
-        if route.company:
-            ids |= set(ids_by_company(con, route.company))
-        if getattr(route, "skills", None):
-            ids |= set(ids_by_skills(con, route.skills))
-
-        profiles = load_candidate_profiles(con, list(ids))
-
-        result = {
-            "ok": True if profiles else False,
-            "why": "" if profiles else "no_matching_candidates",
-            "sections": sections,
-            "facts": profiles,
-            "docs": []
-        }
-        return result
 
     if route.mode == "vector":
-        docs = vsearch(vs, q, k=8, sections=sections)
-        result = {"ok": True, "sections": sections, "facts": [], "docs": docs}
+        docs = vsearch(vs, q, k=8)
+        result = {"sections": sections, "facts": [], "docs": docs}
         return result
 
     if route.mode == "hybrid":
@@ -133,6 +108,6 @@ def execute_query(con, vs, q: str):
                 ids.add(cid)
 
         profiles = load_candidate_profiles(con, list(ids)) if ids else []
-        docs = vsearch(vs, q, k=8, cand_ids=list(ids), sections=sections)
-        result = {"ok": True, "sections": sections, "facts": profiles, "docs": docs}
+        docs = vsearch(vs, q, k=8)
+        result = {"sections": sections, "facts": profiles, "docs": docs}
         return result

@@ -55,10 +55,9 @@ export type Snippet = {
 };
 
 export type AskResponse = {
-  ok: boolean;
   sections: string[];
   facts: CandidateProfile[];
-  docs: Snippet[];
+  docs: CandidateProfile[];
   answer?: string;
   why?: string;
 };

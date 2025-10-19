@@ -109,9 +109,5 @@ export async function askQuestion(
 
   const data: AskResponse = await response.json();
 
-  if (!data.ok) {
-    throw new Error(data.why || 'Unknown error occurred');
-  }
-
   return data;
 }

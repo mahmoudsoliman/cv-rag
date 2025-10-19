@@ -2,6 +2,7 @@ import os
 import glob
 import asyncio
 from typing import List
+from pathlib import Path
 from pdf_parser import extract_pdf_text
 from cv_extractor import extract_structured_profile_from_text
 from db.sql_store import store_profile
@@ -14,17 +15,21 @@ async def process_single_resume(pdf_path: str, db_path: str) -> str:
     try:
         print(f"Processing: {os.path.basename(pdf_path)}")
         
+        # Convert to absolute file:// URI
+        absolute_path = Path(pdf_path).resolve()
+        source_file_uri = f"file://{absolute_path}"
+        
         # Extract text from PDF
         text = await asyncio.to_thread(extract_pdf_text, pdf_path)
         
         # Extract structured profile using LLM
         profile = await asyncio.to_thread(extract_structured_profile_from_text, text)
         
-        # Store profile in database
-        candidate_id = await asyncio.to_thread(store_profile, db_path, profile, source_file=pdf_path)
+        # Store profile in database with file:// URI
+        candidate_id = await asyncio.to_thread(store_profile, db_path, profile, source_file=source_file_uri)
         
         # Build documents for vector store
-        docs = await asyncio.to_thread(build_docs_from_profile, profile, candidate_id, pdf_path=pdf_path)
+        docs = await asyncio.to_thread(build_docs_from_profile, text, candidate_id, profile, pdf_path=source_file_uri)
         
         # Add to vector store
         await asyncio.to_thread(store.add_documents, docs)

@@ -1,0 +1,196 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{ full_name }} – CV</title>
+<style>
+  /* ==== Page & base ==== */
+  @page { size: A4; margin: 16mm 16mm 18mm; }
+  html, body {
+    padding: 0; margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #111;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body { font-size: 10.5pt; line-height: 1.35; }
+
+  /* ==== Utilities for print-safe flow ==== */
+  .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+  h1, h2, h3, .exp-item, .edu-item, .section, .header { break-inside: avoid; page-break-inside: avoid; }
+  /* Reduce orphans/widows in paragraphs (best-effort support) */
+  p, li { orphans: 2; widows: 2; }
+
+  /* ==== Header ==== */
+  .header {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-column-gap: 14px;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .portrait {
+    width: 96px; height: 96px; object-fit: cover; border-radius: 8px;
+  }
+  .name { font-size: 20pt; font-weight: 700; line-height: 1.1; }
+  .title { font-size: 11pt; color: #444; margin-top: 2px; }
+  .meta { margin-top: 4px; font-size: 10pt; color: #333; }
+
+  /* ==== Summary ==== */
+  .summary {
+    margin: 8px 0 10px;
+    font-size: 10.5pt;
+  }
+
+  /* ==== Columns layout (Grid, print-friendly) ==== */
+  .layout {
+    display: grid;
+    grid-template-columns: 1.8fr 1fr;
+    grid-column-gap: 18px;
+    align-items: start;
+  }
+
+  /* Headings */
+  h2 {
+    font-size: 12pt;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+    margin: 12px 0 6px;
+  }
+
+  /* Experience */
+  .exp-item { margin: 8px 0 10px; }
+  .exp-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-column-gap: 8px;
+    font-weight: 600;
+  }
+  .exp-role { font-size: 11pt; }
+  .exp-company { color: #444; }
+  .exp-dates { color: #444; font-size: 9.5pt; white-space: nowrap; }
+  .exp-summary { margin-top: 2px; }
+  ul { margin: 4px 0 0 18px; padding: 0; }
+  li { margin: 2px 0; }
+
+  /* Right column sections */
+  .pill {
+    display: inline-block; padding: 3px 8px; border: 1px solid #ddd;
+    border-radius: 999px; margin: 3px 6px 3px 0; font-size: 9pt;
+  }
+  .edu-item { margin: 6px 0 6px; }
+  .edu-degree { font-weight: 600; }
+  .small { font-size: 9.5pt; color: #555; }
+
+  /* Footnote */
+  .footnote { margin-top: 10px; font-size: 8.5pt; color: #666; }
+
+  /* ==== Screen tweaks (optional) ==== */
+  @media screen {
+    body { background: #fff; }
+    .page { max-width: 800px; margin: 20px auto; }
+  }
+
+  /* ==== Print-specific safety ==== */
+  @media print {
+    .title, .meta { color: #333 !important; }
+    a { color: #111; text-decoration: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      {% if portrait_path %}
+        <img src="{{ portrait_path }}" class="portrait" alt="portrait">
+      {% endif %}
+      <div>
+        <div class="name">{{ full_name }}</div>
+        <div class="title">{{ title }}</div>
+        <div class="meta">{{ location }} · {{ email }} · {{ phone }}</div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    {% if summary %}
+      <div class="summary">{{ summary }}</div>
+    {% endif %}
+
+    <!-- Two-column layout -->
+    <div class="layout">
+      <!-- LEFT: Experience -->
+      <div>
+        <h2>Experience</h2>
+        {% for job in experience %}
+          <div class="exp-item avoid-break">
+            <div class="exp-header">
+              <div class="exp-role">
+                {{ job.title }}
+                {% if job.company %} · <span class="exp-company">{{ job.company }}</span>{% endif %}
+              </div>
+              <div class="exp-dates">{{ job.start_date }} – {{ job.end_date or "Present" }}</div>
+            </div>
+            {% if job.summary %}
+              <div class="exp-summary">{{ job.summary }}</div>
+            {% endif %}
+            {% if job.highlights %}
+              <ul>
+                {% for h in job.highlights %}
+                  <li>{{ h }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <!-- RIGHT: Skills, Education, Languages, Certs -->
+      <div>
+        {% if skills %}
+          <h2>Skills</h2>
+          <div class="avoid-break">
+            {% for s in skills %}
+              <span class="pill">{{ s }}</span>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if education %}
+          <h2>Education</h2>
+          {% for e in education %}
+            <div class="edu-item avoid-break">
+              {% if e.degree %}
+                <div class="edu-degree">{{ e.degree }}</div>
+              {% endif %}
+              <div>{{ e.institution }}{% if e.start_year or e.end_year %} <span class="small">({{ e.start_year }}–{{ e.end_year }})</span>{% endif %}</div>
+            </div>
+          {% endfor %}
+        {% endif %}
+
+        {% if languages %}
+          <h2>Languages</h2>
+          <div class="avoid-break">
+            {% for l in languages %}
+              <div>{{ l.language }} — {{ l.level }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if certifications %}
+          <h2>Certifications</h2>
+          <ul class="avoid-break">
+            {% for c in certifications %}
+              <li>{{ c }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if synthetic %}
+      <div class="footnote">This CV is <strong>synthetic</strong> and generated for testing/training.</div>
+    {% endif %}
+  </div>
+</body>
+</html>
