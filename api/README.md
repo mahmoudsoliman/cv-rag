@@ -4,7 +4,7 @@ A powerful RAG (Retrieval-Augmented Generation) system for searching and queryin
 
 ## 📖 Documentation
 
-For comprehensive system details, architecture, and design rationale, see: [**documentation.md**](documentation.md)
+For comprehensive system details, architecture, and design rationale, see: [**README.md**](../README.md)
 
 ## 🛠️ Installation Guide
 
