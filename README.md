@@ -1,13 +1,17 @@
 # Resumes RAG
 
 ## 1. Overview
+![diagram-export-20-10-2025-14_26_32.png](https://eraser.imgix.net/workspaces/wyrn2YjZzGwQauNnw418/Fu8xX11Fc7Um9tPS9GS0SyP5RKA2/diagram-export-20-10-2025-14_26_32_3sxB8CnbOjfH6tOAxAglf.png?ixlib=js-3.7.0 "diagram-export-20-10-2025-14_26_32.png")
+
+
+
 1. **Resume Generation** with realistic but fake data and images.
 2. **Resume Processing & Storage** in searchable formats.
 3. **Query Answering** over the processed resumes.
 4. **User Interface** for interactive exploration and evidence-backed answers.
 ---
 
-## 2. System Components
+- 2. System Components
 ### 2.1 Synthetic Resume Generation
 - The user triggers generation by running a **Python command** to start the RAG system.
 - The system uses **Faker** to produce personal data that is guaranteed to be fake and easy to control.
