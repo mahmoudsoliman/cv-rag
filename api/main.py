@@ -3,10 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
 import uvicorn
-import os
-import sys
-import json
-import logging
 from datetime import datetime
 
 # Add the current directory to Python path to import modules
@@ -49,75 +45,6 @@ class AskResponse(BaseModel):
 con = init_db("data/candidates.db")
 vs = store
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-def log_query_result(query: str, response: AskResponse, log_file: str = "data/query_logs2.jsonl"):
-    """
-    Log the query and its result to a JSON Lines file
-    """
-    try:
-        # Ensure the data directory exists
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        
-        # Convert sample facts to JSON-serializable format
-        sample_facts = []
-        for fact in response.facts[:3]:
-            if hasattr(fact, 'model_dump'):
-                # Pydantic model
-                sample_facts.append(fact.model_dump())
-            elif isinstance(fact, dict):
-                # Already a dictionary
-                sample_facts.append(fact)
-            elif hasattr(fact, '__dict__'):
-                # Convert object to dictionary
-                fact_dict = {
-                    "full_name": getattr(fact, 'full_name', None),
-                    "email": getattr(fact, 'email', None),
-                    "phone": getattr(fact, 'phone', None),
-                    "location": getattr(fact, 'location', None),
-                    "summary": getattr(fact, 'summary', None),
-                    "skills": getattr(fact, 'skills', [])
-                }
-                sample_facts.append(fact_dict)
-            else:
-                # Fallback: convert to string
-                sample_facts.append(str(fact))
-        
-        # Create log entry
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "query": query,
-            "response": {
-                "ok": response.ok,
-                "sections": response.sections,
-                "facts_count": len(response.facts),
-                "docs_count": len(response.docs),
-                "answer": response.answer,
-                "why": response.why,
-                # Store first few facts and docs for analysis
-                "sample_facts": sample_facts,
-                "sample_docs": [
-                    doc if isinstance(doc, dict) else (
-                        doc.model_dump() if hasattr(doc, 'model_dump') else str(doc)
-                    )
-                    for doc in response.docs[:3]
-                ]
-            }
-        }
-        
-        # Append to log file (JSON Lines format)
-        with open(log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
-        
-        logger.info(f"Logged query result to {log_file}")
-        
-    except Exception as e:
-        logger.error(f"Failed to log query result: {str(e)}")
 
 @app.get("/")
 async def root():
@@ -213,9 +140,6 @@ async def ask_question(request: AskRequest):
             answer=result.get("answer"),
             why=result.get("why")
         )
-        
-        # Log the query and response
-        log_query_result(request.question, response)
         
         return response
         
