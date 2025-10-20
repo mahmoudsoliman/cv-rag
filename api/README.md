@@ -1,121 +1,69 @@
 # CV Search API
 
-A powerful RAG (Retrieval-Augmented Generation) system for searching and querying CV/resume data. This FastAPI-based backend provides intelligent search capabilities across candidate profiles using both SQL queries and vector similarity search.
+A powerful RAG (Retrieval-Augmented Generation) system for searching and querying CV/resume data using intelligent query routing, multi-modal search capabilities, and AI-powered answer generation.
 
-## 🚀 Features
+## 📖 Documentation
 
-- **Intelligent Query Routing**: Automatically routes queries to SQL, vector search, or hybrid approaches based on query type
-- **Multi-Modal Search**: Supports searches across education, experience, skills, and candidate summaries
-- **Structured Data Extraction**: Extracts and stores candidate profiles with education, experience, skills, and certifications
-- **Vector Similarity Search**: Uses ChromaDB for semantic search across resume content
-- **SQL Filtering**: Precise filtering by specific criteria (company, institution, skills, etc.)
-- **AI-Powered Answers**: Generates natural language responses using OpenAI's GPT models
-- **RESTful API**: Clean FastAPI endpoints with comprehensive error handling
+For comprehensive system details, architecture, and design rationale, see: [**documentation.md**](documentation.md)
 
-## 🏗️ Architecture
+## 🛠️ Installation Guide
 
-The system consists of several key components:
-
-- **CV Processing**: PDF parsing and structured data extraction using AI
-- **Database Layer**: SQLite for structured data + ChromaDB for vector embeddings
-- **Query Processing**: Intelligent routing and execution of search queries
-- **Answer Generation**: AI-powered response synthesis from search results
-
-## 📋 Prerequisites
-
+### Prerequisites
 - Python 3.8+
 - OpenAI API key
 - Virtual environment (recommended)
 
-## 🛠️ Installation
+### Quick Setup
+```bash
+cd api
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-1. **Clone the repository and navigate to the API directory:**
-   ```bash
-   cd api
-   ```
+Create a `.env` file with your OpenAI API key:
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+```
 
-2. **Create and activate a virtual environment:**
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-   ```
+## 🚀 Usage Guide
 
-3. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Generate Resumes
+To generate synthetic resumes, run from the api folder:
+```bash
+python cv_generation/cv_generator.py
+```
+*Note: You can configure how many CVs to generate and the percentage of CVs that have images from within the script.*
 
-4. **Set up environment variables:**
-   Create a `.env` file in the API directory:
-   ```bash
-   OPENAI_API_KEY=your_openai_api_key_here
-   ```
+### 2. Process CVs and Store in Database
+To process the CVs and store them in the database:
+```bash
+python cv_processing/cv_processor.py
+```
+*This will process all PDF resumes in the `data/pdf` folder and store the data in the database.*
 
-5. **Initialize the database and process sample CVs:**
-   ```bash
-   python -c "from cv_processing.cv_processor import process_all_resumes; import asyncio; asyncio.run(process_all_resumes())"
-   ```
+Now the API is ready to answer user queries.
 
-## 🚀 Running the API
-
-### Option 1: Using the provided script
+### 3. Starting the API
 ```bash
 chmod +x run_api.sh
 ./run_api.sh
 ```
+Or run directly: `python main.py`
 
-### Option 2: Direct Python execution
-```bash
-python main.py
-```
+The API will be available at `http://localhost:8000`
 
-The API will start on `http://localhost:8000`
+### API Endpoints
+- **Health Check**: `GET /health`
+- **Search CVs**: `POST /ask` with JSON body: `{"question": "Your query here"}`
 
-## 📚 API Endpoints
+### Supported Query Types
+- Skills search: "Find candidates with Python and React skills"
+- Company experience: "Who worked at Google or Microsoft?"
+- Education queries: "Find candidates with Computer Science degrees"
+- Hybrid searches: "Show me software engineers with AWS experience"
 
-### Health Check
-```http
-GET /health
-```
-
-### Search CVs
-```http
-POST /ask
-Content-Type: application/json
-
-{
-  "question": "Find candidates with React experience"
-}
-```
-
-**Response:**
-```json
-{
-  "ok": true,
-  "sections": ["skills", "experience"],
-  "facts": [...],
-  "docs": [...],
-  "answer": "Generated answer based on search results",
-  "why": "Explanation of search approach"
-}
-```
-
-## 🔍 Query Types Supported
-
-- **Skills Search**: "Find candidates with Python and React skills"
-- **Company Experience**: "Who worked at Google or Microsoft?"
-- **Education Queries**: "Find candidates with Computer Science degrees"
-- **Hybrid Searches**: "Show me software engineers with AWS experience"
-- **Summarization**: "Summarize all candidates" or "Tell me about John Doe"
-
-## 🗄️ Database Schema
-
-The system uses two storage layers:
-
-1. **SQLite Database** (`data/candidates.db`): Stores structured candidate profiles
-2. **ChromaDB** (`data/chroma_resumes/`): Stores vector embeddings for semantic search
-
-## 📁 Project Structure
+##  Project Structure
 
 ```
 api/
@@ -133,30 +81,9 @@ api/
 ## 🔧 Configuration
 
 - **API Port**: 8000 (configurable in `main.py`)
-- **CORS**: Enabled for all origins (configure in `main.py` for production)
+- **CORS**: Enabled for all origins (configure for production use)
 - **Vector Store**: ChromaDB with default settings
 - **Database**: SQLite with auto-initialization
-
-## 🧪 Testing
-
-Test the API using curl or any HTTP client:
-
-```bash
-curl -X POST "http://localhost:8000/ask" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "Find candidates with Python skills"}'
-```
-
-## 🚨 Troubleshooting
-
-1. **OpenAI API Key Error**: Ensure your `.env` file contains a valid OpenAI API key
-2. **Database Not Found**: Run the CV processing script to initialize the database
-3. **Port Already in Use**: Change the port in `main.py` or kill the process using port 8000
-4. **Import Errors**: Ensure all dependencies are installed and virtual environment is activated
-
-## 📝 Notes
-
-- The system processes PDF resumes from the `data/pdf/` directory
-- Vector embeddings are generated using OpenAI's text-embedding models
-- Query routing uses GPT-4o-mini for intelligent query classification
-- All AI operations require a valid OpenAI API key
+- **Storage Layers**:
+  - SQLite Database (`data/candidates.db`): Structured candidate profiles
+  - ChromaDB (`data/chroma_resumes/`): Vector embeddings for semantic search
